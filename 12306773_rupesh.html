@@ -1,0 +1,247 @@
+<!-- ================= HTML ================= -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Expression Tree Builder & Evaluator</title>
+
+  <!-- =============== CSS =============== -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: 'Roboto', sans-serif;
+    }
+    body {
+      margin: 0;
+      background-color: #eef1f5;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 40px 20px;
+    }
+    .app {
+      background: #fff;
+      max-width: 900px;
+      width: 100%;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+      padding: 30px;
+    }
+    h1 {
+      font-size: 28px;
+      margin-bottom: 20px;
+      text-align: center;
+      color: #2c3e50;
+    }
+    input {
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      margin-bottom: 15px;
+    }
+    button {
+      background-color: #007bff;
+      color: white;
+      padding: 12px 20px;
+      font-size: 16px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    #treeDisplay, #resultDisplay {
+      margin-top: 25px;
+      text-align: center;
+    }
+    .node {
+      position: relative;
+      display: inline-block;
+      padding: 10px 16px;
+      background-color: #f9f9f9;
+      border: 2px solid #2c3e50;
+      border-radius: 8px;
+      margin: 20px auto;
+      font-weight: bold;
+      min-width: 40px;
+    }
+    .tree-level {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 40px;
+      margin-top: 20px;
+      position: relative;
+    }
+    .tree-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+    }
+    .connector-line {
+      position: absolute;
+      width: 2px;
+      height: 20px;
+      background-color: #2c3e50;
+    }
+    .connector-horizontal {
+      position: absolute;
+      height: 2px;
+      background-color: #2c3e50;
+    }
+    h3 {
+      color: #28a745;
+      font-size: 22px;
+      font-weight: 600;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <h1>Expression Tree Builder & Evaluator</h1>
+    <input type="text" id="expression" placeholder="Enter Infix Expression (e.g. 3 + (2 * 5))">
+    <button onclick="handleBuildTree()">Build & Evaluate</button>
+    <div id="treeDisplay"></div>
+    <div id="resultDisplay"></div>
+  </div>
+
+  <!-- =============== JavaScript =============== -->
+  <script>
+    class Node {
+      constructor(value) {
+        this.value = value;
+        this.left = null;
+        this.right = null;
+      }
+    }
+
+    function precedence(op) {
+      if (op === '+' || op === '-') return 1;
+      if (op === '*' || op === '/') return 2;
+      if (op === '^') return 3;
+      return 0;
+    }
+
+    function isOperator(c) {
+      return ['+', '-', '*', '/', '^'].includes(c);
+    }
+
+    function infixToPostfix(exp) {
+      let output = [];
+      let stack = [];
+      let tokens = exp.match(/\d+(\.\d+)?|[()+\-*/^]/g);
+      if (!tokens) return [];
+
+      for (let token of tokens) {
+        if (!isNaN(token)) {
+          output.push(token);
+        } else if (token === '(') {
+          stack.push(token);
+        } else if (token === ')') {
+          while (stack.length && stack[stack.length - 1] !== '(') {
+            output.push(stack.pop());
+          }
+          stack.pop();
+        } else if (isOperator(token)) {
+          while (stack.length && precedence(stack[stack.length - 1]) >= precedence(token)) {
+            output.push(stack.pop());
+          }
+          stack.push(token);
+        }
+      }
+
+      while (stack.length) {
+        output.push(stack.pop());
+      }
+
+      return output;
+    }
+
+    function buildExpressionTree(postfix) {
+      let stack = [];
+      for (let token of postfix) {
+        if (!isNaN(token)) {
+          stack.push(new Node(token));
+        } else {
+          let node = new Node(token);
+          node.right = stack.pop();
+          node.left = stack.pop();
+          stack.push(node);
+        }
+      }
+      return stack.pop();
+    }
+
+    function evaluateTree(node) {
+      if (!node.left && !node.right) return parseFloat(node.value);
+      let left = evaluateTree(node.left);
+      let right = evaluateTree(node.right);
+      switch (node.value) {
+        case '+': return left + right;
+        case '-': return left - right;
+        case '*': return left * right;
+        case '/': return left / right;
+        case '^': return Math.pow(left, right);
+      }
+    }
+
+    function renderTree(node, container) {
+      if (!node) return;
+
+      const nodeEl = document.createElement('div');
+      nodeEl.className = 'node';
+      nodeEl.innerText = node.value;
+
+      const treeContainer = document.createElement('div');
+      treeContainer.className = 'tree-container';
+      treeContainer.appendChild(nodeEl);
+
+      if (node.left || node.right) {
+        const level = document.createElement('div');
+        level.className = 'tree-level';
+
+        if (node.left) {
+          const leftContainer = document.createElement('div');
+          renderTree(node.left, leftContainer);
+          level.appendChild(leftContainer);
+        }
+
+        if (node.right) {
+          const rightContainer = document.createElement('div');
+          renderTree(node.right, rightContainer);
+          level.appendChild(rightContainer);
+        }
+
+        treeContainer.appendChild(level);
+      }
+
+      container.appendChild(treeContainer);
+    }
+
+    function handleBuildTree() {
+      const expression = document.getElementById('expression').value;
+      const postfix = infixToPostfix(expression);
+      if (postfix.length === 0) {
+        alert("Invalid expression! Please check your syntax.");
+        return;
+      }
+      const treeRoot = buildExpressionTree(postfix);
+      const treeContainer = document.getElementById('treeDisplay');
+      treeContainer.innerHTML = '';
+      renderTree(treeRoot, treeContainer);
+      const result = evaluateTree(treeRoot);
+      document.getElementById('resultDisplay').innerHTML = `<h3>Result: ${result}</h3>`;
+    }
+  </script>
+</body>
+</html>
